@@ -1,5 +1,5 @@
 Обновление ядра:  
-1. Подключаемся по ssh к созданной виртуальной машины.  
+1. Подключаемся по ssh к созданной виртуальной машине.  
 2. Перед работами проверим текущую версию ядра uname -a  
 ![Image alt](https://github.com/RileyTheHorizon/Linux/blob/main/uname1.jpg)
 3. Добавляем официальный PPA  с mainline-ядрами для Ubuntu sudo add-apt-repository ppa:cappelikan/ppa -y, затем sudo apt update
