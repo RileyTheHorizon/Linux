@@ -1,51 +1,51 @@
-1. Создание RAID 1 - Зеркало
-root@warmachine:/home/alex# mdadm --create --verbose /dev/md127 -l 1 -n 2 /dev/sd
-sda   sda1  sda2  sda3  sdb   sdb1  sdb2
-root@warmachine:/home/alex# mdadm --create --verbose /dev/md127 -l 1 -n 2 /dev/sdb1 /dev/sdb2
-mdadm: Note: this array has metadata at the start and
-    may not be suitable as a boot device.  If you plan to
-    store '/boot' on this device please ensure that
-    your boot-loader understands md/v1.x metadata, or use
-    --metadata=0.90
-mdadm: size set to 1046528K
-Continue creating array? y
-mdadm: Defaulting to version 1.2 metadata
-mdadm: array /dev/md127 started.
-2. Проверяем собрался ли RAID 
-root@warmachine:/home/alex# cat /proc/mdstat
-Personalities : [raid0] [raid1] [raid4] [raid5] [raid6] [raid10] [linear]
-md127 : active raid1 sdb2[1] sdb1[0]
-      1046528 blocks super 1.2 [2/2] [UU]
+1. Создание RAID 1 - Зеркало  
+root@warmachine:/home/alex# mdadm --create --verbose /dev/md127 -l 1 -n 2 /dev/sd  
+sda   sda1  sda2  sda3  sdb   sdb1  sdb2  
+root@warmachine:/home/alex# mdadm --create --verbose /dev/md127 -l 1 -n 2 /dev/sdb1 /dev/sdb2  
+mdadm: Note: this array has metadata at the start and  
+    may not be suitable as a boot device.  If you plan to  
+    store '/boot' on this device please ensure that  
+    your boot-loader understands md/v1.x metadata, or use  
+    --metadata=0.90  
+mdadm: size set to 1046528K  
+Continue creating array? y  
+mdadm: Defaulting to version 1.2 metadata  
+mdadm: array /dev/md127 started.  
+2. Проверяем собрался ли RAID   
+root@warmachine:/home/alex# cat /proc/mdstat  
+Personalities : [raid0] [raid1] [raid4] [raid5] [raid6] [raid10] [linear]  
+md127 : active raid1 sdb2[1] sdb1[0]  
+      1046528 blocks super 1.2 [2/2] [UU]  
 
-unused devices: <none>
+unused devices: <none>  
 
-root@warmachine:/home/alex# mdadm -D /dev/md127
-/dev/md127:
-           Version : 1.2
-     Creation Time : Fri Jul  4 14:07:44 2025
+root@warmachine:/home/alex# mdadm -D /dev/md127  
+/dev/md127:  
+           Version : 1.2  
+     Creation Time : Fri Jul  4 14:07:44 2025  
         Raid Level : raid1
-        Array Size : 1046528 (1022.00 MiB 1071.64 MB)
-     Used Dev Size : 1046528 (1022.00 MiB 1071.64 MB)
-      Raid Devices : 2
-     Total Devices : 2
-       Persistence : Superblock is persistent
+        Array Size : 1046528 (1022.00 MiB 1071.64 MB)  
+     Used Dev Size : 1046528 (1022.00 MiB 1071.64 MB)  
+      Raid Devices : 2  
+     Total Devices : 2  
+       Persistence : Superblock is persistent  
 
-       Update Time : Fri Jul  4 14:07:49 2025
-             State : clean
-    Active Devices : 2
-   Working Devices : 2
-    Failed Devices : 0
-     Spare Devices : 0
+       Update Time : Fri Jul  4 14:07:49 2025  
+             State : clean  
+    Active Devices : 2  
+   Working Devices : 2  
+    Failed Devices : 0  
+     Spare Devices : 0  
 
-Consistency Policy : resync
+Consistency Policy : resync  
 
-              Name : warmachine:127  (local to host warmachine)
-              UUID : 1ec61886:edf217d4:e235c76f:e13e4197
-            Events : 17
+              Name : warmachine:127  (local to host warmachine)  
+              UUID : 1ec61886:edf217d4:e235c76f:e13e4197  
+            Events : 17  
 
-    Number   Major   Minor   RaidDevice State
-       0       8       17        0      active sync   /dev/sdb1
-       1       8       18        1      active sync   /dev/sdb2
+    Number   Major   Minor   RaidDevice State  
+       0       8       17        0      active sync   /dev/sdb1  
+       1       8       18        1      active sync   /dev/sdb2  
 
 3. Ломаем RAID
 
