@@ -1,66 +1,41 @@
 1. Создание RAID 1 - Зеркало  
-root@warmachine:/home/alex# mdadm --create --verbose /dev/md127 -l 1 -n 2 /dev/sd  
-sda   sda1  sda2  sda3  sdb   sdb1  sdb2  
-root@warmachine:/home/alex# mdadm --create --verbose /dev/md127 -l 1 -n 2 /dev/sdb1 /dev/sdb2  
-mdadm: Note: this array has metadata at the start and  
-    may not be suitable as a boot device.  If you plan to  
-    store '/boot' on this device please ensure that  
-    your boot-loader understands md/v1.x metadata, or use  
-    --metadata=0.90  
-mdadm: size set to 1046528K  
-Continue creating array? y  
-mdadm: Defaulting to version 1.2 metadata  
-mdadm: array /dev/md127 started.  
-2. Проверяем собрался ли RAID   
-root@warmachine:/home/alex# cat /proc/mdstat  
-Personalities : [raid0] [raid1] [raid4] [raid5] [raid6] [raid10] [linear]  
-md127 : active raid1 sdb2[1] sdb1[0]  
-      1046528 blocks super 1.2 [2/2] [UU]  
+root@warmachine:/home/alex# mdadm --create --verbose /dev/md0 -l 1 -n 2 /dev/sdb /dev/sdc
+mdadm: Note: this array has metadata at the start and
+    may not be suitable as a boot device.  If you plan to
+    store '/boot' on this device please ensure that
+    your boot-loader understands md/v1.x metadata, or use
+    --metadata=0.90
+mdadm: size set to 1046528K
+Continue creating array? Y
+mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md0 started.
+root@warmachine:/home/alex# lsblk
+root@warmachine:/home/alex# lsblk
+NAME                      MAJ:MIN RM  SIZE RO TYPE  MOUNTPOINTS
+sda                         8:0    0 12,5G  0 disk
+├─sda1                      8:1    0    1M  0 part
+├─sda2                      8:2    0  1,8G  0 part  /boot
+└─sda3                      8:3    0 10,7G  0 part
+  └─ubuntu--vg-ubuntu--lv 252:0    0   10G  0 lvm   /
+sdb                         8:16   0    1G  0 disk
+└─md0                       9:0    0 1022M  0 raid1
+sdc                         8:32   0    1G  0 disk
+└─md0                       9:0    0 1022M  0 raid1
+sr0                        11:0    1 1024M  0 rom 
 
-unused devices: <none>  
-
-root@warmachine:/home/alex# mdadm -D /dev/md127  
-/dev/md127:  
-           Version : 1.2  
-     Creation Time : Fri Jul  4 14:07:44 2025  
-        Raid Level : raid1
-        Array Size : 1046528 (1022.00 MiB 1071.64 MB)  
-     Used Dev Size : 1046528 (1022.00 MiB 1071.64 MB)  
-      Raid Devices : 2  
-     Total Devices : 2  
-       Persistence : Superblock is persistent  
-
-       Update Time : Fri Jul  4 14:07:49 2025  
-             State : clean  
-    Active Devices : 2  
-   Working Devices : 2  
-    Failed Devices : 0  
-     Spare Devices : 0  
-
-Consistency Policy : resync  
-
-              Name : warmachine:127  (local to host warmachine)  
-              UUID : 1ec61886:edf217d4:e235c76f:e13e4197  
-            Events : 17  
-
-    Number   Major   Minor   RaidDevice State  
-       0       8       17        0      active sync   /dev/sdb1  
-       1       8       18        1      active sync   /dev/sdb2  
-
-3. Ломаем RAID
-
-root@warmachine:/home/alex# mdadm /dev/md127 --fail /dev/sdb1
-mdadm: set /dev/sdb1 faulty in /dev/md127
+2. Проверяем что RAID собрался
 root@warmachine:/home/alex# cat /proc/mdstat
 Personalities : [raid0] [raid1] [raid4] [raid5] [raid6] [raid10] [linear]
-md127 : active raid1 sdb2[1] sdb1[0](F)
-      1046528 blocks super 1.2 [2/1] [_U]
+md0 : active raid1 sdc[1] sdb[0]
+      1046528 blocks super 1.2 [2/2] [UU]
 
+unused devices: <none>
 
-root@warmachine:/home/alex# mdadm -D /dev/md127
-/dev/md127:
+2.1 
+root@warmachine:/home/alex# mdadm -D /dev/md0
+/dev/md0:
            Version : 1.2
-     Creation Time : Fri Jul  4 14:07:44 2025
+     Creation Time : Fri Jul  4 16:31:07 2025
         Raid Level : raid1
         Array Size : 1046528 (1022.00 MiB 1071.64 MB)
      Used Dev Size : 1046528 (1022.00 MiB 1071.64 MB)
@@ -68,43 +43,7 @@ root@warmachine:/home/alex# mdadm -D /dev/md127
      Total Devices : 2
        Persistence : Superblock is persistent
 
-       Update Time : Fri Jul  4 14:21:05 2025
-             State : clean, degraded
-    Active Devices : 1
-   Working Devices : 1
-    Failed Devices : 1
-     Spare Devices : 0
-
-Consistency Policy : resync
-
-              Name : warmachine:127  (local to host warmachine)
-              UUID : 1ec61886:edf217d4:e235c76f:e13e4197
-            Events : 19
-
-    Number   Major   Minor   RaidDevice State
-       -       0        0        0      removed
-       1       8       18        1      active sync   /dev/sdb2
-
-
-4. Извлекаем диск из массива
-root@warmachine:/home/alex# mdadm /dev/md127 --remove /dev/sdb1
-mdadm: hot removed /dev/sdb1 from /dev/md127
-
-5. Добавляем диск в массив 
-root@warmachine:/home/alex# mdadm /dev/md127 --add /dev/sdb1
-mdadm: added /dev/sdb1
-root@warmachine:/home/alex# mdadm -D /dev/md127
-/dev/md127:
-           Version : 1.2
-     Creation Time : Fri Jul  4 14:07:44 2025
-        Raid Level : raid1
-        Array Size : 1046528 (1022.00 MiB 1071.64 MB)
-     Used Dev Size : 1046528 (1022.00 MiB 1071.64 MB)
-      Raid Devices : 2
-     Total Devices : 2
-       Persistence : Superblock is persistent
-
-       Update Time : Fri Jul  4 14:26:09 2025
+       Update Time : Fri Jul  4 16:31:12 2025
              State : clean
     Active Devices : 2
    Working Devices : 2
@@ -113,30 +52,172 @@ root@warmachine:/home/alex# mdadm -D /dev/md127
 
 Consistency Policy : resync
 
-              Name : warmachine:127  (local to host warmachine)
-              UUID : 1ec61886:edf217d4:e235c76f:e13e4197
+              Name : warmachine:0  (local to host warmachine)
+              UUID : 68a14aaa:fa4d74f5:10ff5777:278500c7
+            Events : 17
+
+    Number   Major   Minor   RaidDevice State
+       0       8       16        0      active sync   /dev/sdb
+       1       8       32        1      active sync   /dev/sdc
+
+3. Ломаем RAID
+
+root@warmachine:/home/alex# mdadm /dev/md0 --fail /dev/sdb
+3.1 Проверяем что сломали RAID
+root@warmachine:/home/alex# cat /proc/mdstat
+Personalities : [raid0] [raid1] [raid4] [raid5] [raid6] [raid10] [linear]
+md0 : active raid1 sdc[1] sdb[0](F)
+      1046528 blocks super 1.2 [2/1] [_U]
+
+unused devices: <none>
+
+root@warmachine:/home/alex# mdadm -D /dev/md0
+/dev/md0:
+           Version : 1.2
+     Creation Time : Fri Jul  4 16:31:07 2025
+        Raid Level : raid1
+        Array Size : 1046528 (1022.00 MiB 1071.64 MB)
+     Used Dev Size : 1046528 (1022.00 MiB 1071.64 MB)
+      Raid Devices : 2
+     Total Devices : 2
+       Persistence : Superblock is persistent
+
+       Update Time : Fri Jul  4 16:36:49 2025
+             State : clean, degraded
+    Active Devices : 1
+   Working Devices : 1
+    Failed Devices : 1
+     Spare Devices : 0
+
+Consistency Policy : resync
+
+              Name : warmachine:0  (local to host warmachine)
+              UUID : 68a14aaa:fa4d74f5:10ff5777:278500c7
+            Events : 19
+
+    Number   Major   Minor   RaidDevice State
+       -       0        0        0      removed
+       1       8       32        1      active sync   /dev/sdc
+
+       0       8       16        -      faulty   /dev/sdb
+
+4. Извлекаем диск из массива
+root@warmachine:/home/alex# mdadm /dev/md0 --remove /dev/sdb
+mdadm: hot removed /dev/sdb from /dev/md0
+5. Добавляем диск в массив 
+root@warmachine:/home/alex# mdadm /dev/md0 --add /dev/sdb
+mdadm: added /dev/sdb
+root@warmachine:/home/alex# mdadm -D /dev/md0
+/dev/md0:
+           Version : 1.2
+     Creation Time : Fri Jul  4 16:31:07 2025
+        Raid Level : raid1
+        Array Size : 1046528 (1022.00 MiB 1071.64 MB)
+     Used Dev Size : 1046528 (1022.00 MiB 1071.64 MB)
+      Raid Devices : 2
+     Total Devices : 2
+       Persistence : Superblock is persistent
+
+       Update Time : Fri Jul  4 16:42:49 2025
+             State : clean
+    Active Devices : 2
+   Working Devices : 2
+    Failed Devices : 0
+     Spare Devices : 0
+
+Consistency Policy : resync
+
+              Name : warmachine:0  (local to host warmachine)
+              UUID : 68a14aaa:fa4d74f5:10ff5777:278500c7
             Events : 39
 
     Number   Major   Minor   RaidDevice State
-       2       8       17        0      active sync   /dev/sdb1
-       1       8       18        1      active sync   /dev/sdb2
-6. Добавил фс + примонтировал каталоги
+       2       8       16        0      active sync   /dev/sdb
+       1       8       32        1      active sync   /dev/sdc
 
-root@warmachine:/raid# lsblk
+
+6. Добавил фс + примонтировал каталоги
+root@warmachine:/home/alex# for i in $(seq 1 5); do sudo mkfs.ext4 /dev/md0p$i; done
+mke2fs 1.47.0 (5-Feb-2023)
+Creating filesystem with 51968 4k blocks and 51968 inodes
+Filesystem UUID: f9c8f8ae-d57e-484d-9824-9ed947d8b8a9
+Superblock backups stored on blocks:
+        32768
+
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (4096 blocks): done
+Writing superblocks and filesystem accounting information: done
+
+mke2fs 1.47.0 (5-Feb-2023)
+Creating filesystem with 52480 4k blocks and 52480 inodes
+Filesystem UUID: d52e0e55-7bbb-41ac-a742-5e705ef2aba9
+Superblock backups stored on blocks:
+        32768
+
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (4096 blocks): done
+Writing superblocks and filesystem accounting information: done
+
+mke2fs 1.47.0 (5-Feb-2023)
+Creating filesystem with 52224 4k blocks and 52224 inodes
+Filesystem UUID: b31a08a9-3e8c-491c-86ad-ca0a7e9b0b7a
+Superblock backups stored on blocks:
+        32768
+
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (4096 blocks): done
+Writing superblocks and filesystem accounting information: done
+
+mke2fs 1.47.0 (5-Feb-2023)
+Creating filesystem with 52480 4k blocks and 52480 inodes
+Filesystem UUID: 4c896dec-302b-4849-b9a9-d9d1aa713823
+Superblock backups stored on blocks:
+        32768
+
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (4096 blocks): done
+Writing superblocks and filesystem accounting information: done
+
+mke2fs 1.47.0 (5-Feb-2023)
+Creating filesystem with 51968 4k blocks and 51968 inodes
+Filesystem UUID: c06701db-798a-4297-b4cb-06ef212af83e
+Superblock backups stored on blocks:
+        32768
+
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (4096 blocks): done
+Writing superblocks and filesystem accounting information: done
+
+6.1 
+
+root@warmachine:/home/alex# for i in $(seq 1 5); do sudo mkdir -p /raid/part$i; done
+root@warmachine:/home/alex# for i in $(seq 1 5); do mount /dev/md0p$i /raid/part$i; done
+root@warmachine:/home/alex# lsblk
 NAME                      MAJ:MIN RM  SIZE RO TYPE  MOUNTPOINTS
 sda                         8:0    0 12,5G  0 disk
 ├─sda1                      8:1    0    1M  0 part
 ├─sda2                      8:2    0  1,8G  0 part  /boot
 └─sda3                      8:3    0 10,7G  0 part
   └─ubuntu--vg-ubuntu--lv 252:0    0   10G  0 lvm   /
-sdb                         8:16   0 10,6G  0 disk
-├─sdb1                      8:17   0    1G  0 part
-│ └─md127                   9:127  0 1022M  0 raid1
-│   ├─md127p1             259:0    0  510M  0 part  /raid/part1
-│   └─md127p2             259:1    0  510M  0 part  /raid/part2
-└─sdb2                      8:18   0    1G  0 part
-  └─md127                   9:127  0 1022M  0 raid1
-    ├─md127p1             259:0    0  510M  0 part  /raid/part1
-    └─md127p2             259:1    0  510M  0 part  /raid/part2
+sdb                         8:16   0    1G  0 disk
+└─md0                       9:0    0 1022M  0 raid1
+  ├─md0p1                 259:0    0  203M  0 part  /raid/part1
+  ├─md0p2                 259:1    0  205M  0 part  /raid/part2
+  ├─md0p3                 259:2    0  204M  0 part  /raid/part3
+  ├─md0p4                 259:3    0  205M  0 part  /raid/part4
+  └─md0p5                 259:4    0  203M  0 part  /raid/part5
+sdc                         8:32   0    1G  0 disk
+└─md0                       9:0    0 1022M  0 raid1
+  ├─md0p1                 259:0    0  203M  0 part  /raid/part1
+  ├─md0p2                 259:1    0  205M  0 part  /raid/part2
+  ├─md0p3                 259:2    0  204M  0 part  /raid/part3
+  ├─md0p4                 259:3    0  205M  0 part  /raid/part4
+  └─md0p5                 259:4    0  203M  0 part  /raid/part5
 sr0                        11:0    1 1024M  0 rom
-root@warmachine:/raid#
+root@warmachine:/home/alex#
+
