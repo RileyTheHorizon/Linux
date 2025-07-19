@@ -30,6 +30,16 @@ upload
 root@warmachine1:/home/alex1# mount | grep mnt
 systemd-1 on /mnt type autofs (rw,relatime,fd=68,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=14389)
 192.168.31.77:/srv/share/ on /mnt type nfs (rw,relatime,vers=3,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.31.77,mountvers=3,mountport=57188,mountproto=udp,local_lock=none,addr=192.168.31.77)
-
+3. Проверяем работу 
+создаем файл в экспертированной диреткории на сервере
+root@warmachine:/srv/share# cd /srv/share/upload/
+root@warmachine:/srv/share/upload# echo zdraste >> file_test
+root@warmachine:/srv/share/upload# cat file_test
+zdraste
+Заходим на клиент и проверяем
+alex1@warmachine1:/mnt/upload$ cd
+alex1@warmachine1:~$ cd /mnt/upload/
+alex1@warmachine1:/mnt/upload$ cat file_test
+zdraste
 
 
