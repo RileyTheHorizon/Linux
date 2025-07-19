@@ -1,0 +1,35 @@
+1. Установим сервер NFS:
+root@warmachine:/home/alex# apt install nfs-kernel-server
+Настройки сервера находятся в файле /etc/nfs.conf 
+Проверяем наличие слушающих портов 2049/udp, 2049/tcp,111/udp, 111/tcp (не все они будут использоваться далее,  но их наличие сигнализирует о том, что необходимые сервисы готовы принимать внешние подключения):
+root@warmachine:/home/alex# ss -tnplu
+1.2 Создаём и настраиваем директорию, которая будет экспортирована в будущем 
+root@warmachine:/home/alex# mkdir -p /srv/share/upload
+root@warmachine:/home/alex# chown -R nobody:nogroup /srv/share/
+root@warmachine:/home/alex# chmod 0777 /srv/share/upload/
+1.3 Cоздаём в файле /etc/exports структуру, которая позволит экспортировать ранее созданную директорию:
+cat << EOF > /etc/exports
+/srv/share 192.168.31.57/32(rw,sync,root_squash)
+EOF
+1.4 Экспортируем ранее созданную директорию:
+root@warmachine:/srv/share# exportfs -r
+Проверяем экспортированную директорию следующей командой
+root@warmachine:/srv/share# exportfs -s
+/srv/share  192.168.31.57/32(sync,wdelay,hide,no_subtree_check,sec=sys,rw,secure,root_squash,no_all_squash)
+2. Настраиваем клиент NFS 
+root@warmachine1:/home/alex1# sudo apt install nfs-common
+Добавляем в /etc/fstab строку 
+root@warmachine1:/home/alex1# echo "192.168.31.77:/srv/share/ /mnt nfs vers=3,noauto,x-systemd.automount 0 0" >> /etc/fstab
+и выполняем команды:
+root@warmachine1:/home/alex1# systemctl daemon-reload
+root@warmachine1:/home/alex1# systemctl restart remote-fs.target
+Заходим в директорию /mnt/ и проверяем успешность монтирования: (ЗАМЕТКА добавили опцию x-systemd.automount, поэтому /mnt монтируется только при обращении к нему (ленивое монтирование) поэтому сначала ls /mnt 
+а потом mount | grep mnt
+root@warmachine1:/home/alex1# ls /mnt/
+upload
+root@warmachine1:/home/alex1# mount | grep mnt
+systemd-1 on /mnt type autofs (rw,relatime,fd=68,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=14389)
+192.168.31.77:/srv/share/ on /mnt type nfs (rw,relatime,vers=3,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.31.77,mountvers=3,mountport=57188,mountproto=udp,local_lock=none,addr=192.168.31.77)
+
+
+
