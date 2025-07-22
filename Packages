@@ -1,0 +1,106 @@
+Создать свой RPM пакет
+Для данного задания нам понадобятся следующие установленные пакеты:
+[root@MiWiFi-R4A-srv alex]# yum install -y wget rpmdevtools rpm-build createrepo \
+ yum-utils cmake gcc git nano
+Для примера возьмем пакет Nginx и соберем его с дополнительным модулем ngx_broli
+● Загрузим SRPM пакет Nginx для дальнейшей работы над ним:
+[root@MiWiFi-R4A-srv ~]# mkdir rpm && cd rpm
+[root@MiWiFi-R4A-srv rpm]# yumdownloader --source nginx
+При установке такого пакета в домашней директории создается дерево каталогов для сборки, далее поставим все зависимости для сборки пакета Nginx:
+Также нужно скачать исходный код модуля ngx_brotli — он
+потребуется при сборке:
+[root@MiWiFi-R4A-srv rpm]# cd /root
+[root@MiWiFi-R4A-srv ~]# git clone --recurse-submodules -j8 \
+https://github.com/google/ngx_brotli
+[root@MiWiFi-R4A-srv ~]# cd ngx_brotli/deps/brotli
+[root@MiWiFi-R4A-srv brotli]# mkdir out && cd out
+Собираем модуль ngx_brotli:
+[root@MiWiFi-R4A-srv out]# cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS="-Ofast -m64 -march=native -mtune=native -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections" -DCMAKE_CXX_FLAGS="-Ofast -m64 -march=native -mtune=native -flto -funroll-loops -ffunction-sections -fdata-sections -Wl,--gc-sections" -DCMAKE_INSTALL_PREFIX=./installed ..
+[root@MiWiFi-R4A-srv out]# cmake --build . --config Release -j 2 --target brotlienc
+[root@MiWiFi-R4A-srv out]# cd ../../../..
+Теперь можно приступить к сборке RPM пакета:
+[root@MiWiFi-R4A-srv out]# cd ~/rpmbuild/SPECS/
+[root@MiWiFi-R4A-srv SPECS]# rpmbuild -ba nginx.spec -D 'debug_package %{nil}'
++ umask 022
++ cd /root/rpmbuild/BUILD
++ cd nginx-1.20.1
++ /usr/bin/rm -rf /root/rpmbuild/BUILDROOT/nginx-1.20.1-22.el9.3.alma.1.x86_64
++ RPM_EC=0
+++ jobs -p
++ exit 0
+Убедимся, что пакеты создались:
+ll
+-rw-r--r--. 1 root root   36979 июл 23 00:21 nginx-1.20.1-22.el9.3.alma.1.x86_64.rpm
+ Копируем пакеты в общий каталог:
+[root@MiWiFi-R4A-srv x86_64]# cp ~/rpmbuild/RPMS/noarch/* ~/rpmbuild/RPMS/x86_64/
+[root@MiWiFi-R4A-srv x86_64]# cd ~/rpmbuild/RPMS/x86_64
+Теперь можно установить наш пакет и убедиться, что nginx работает:
+[root@MiWiFi-R4A-srv x86_64]#  yum localinstall *.rpm
+[root@MiWiFi-R4A-srv x86_64]# systemctl start nginx
+[root@MiWiFi-R4A-srv x86_64]#  systemctl status nginx
+* nginx.service - The nginx HTTP and reverse proxy server
+     Loaded: loaded (/usr/lib/systemd/system/nginx.service; disabled; preset: disabled)
+     Active: active (running) since Wed 2025-07-23 00:27:58 MSK; 4s ago
+    Process: 65740 ExecStartPre=/usr/bin/rm -f /run/nginx.pid (code=exited, status=0/SUCCESS)
+    Process: 65741 ExecStartPre=/usr/sbin/nginx -t (code=exited, status=0/SUCCESS)
+    Process: 65742 ExecStart=/usr/sbin/nginx (code=exited, status=0/SUCCESS)
+   Main PID: 65743 (nginx)
+      Tasks: 2 (limit: 10920)
+     Memory: 4.6M
+        CPU: 39ms
+     CGroup: /system.slice/nginx.service
+             |-65743 "nginx: master process /usr/sbin/nginx"
+             `-65744 "nginx: worker process"
+
+Jul 23 00:27:58 MiWiFi-R4A-srv systemd[1]: Starting The nginx HTTP and reverse proxy server...
+Jul 23 00:27:58 MiWiFi-R4A-srv nginx[65741]: nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+Jul 23 00:27:58 MiWiFi-R4A-srv nginx[65741]: nginx: configuration file /etc/nginx/nginx.conf test is successful
+Jul 23 00:27:58 MiWiFi-R4A-srv systemd[1]: Started The nginx HTTP and reverse proxy server.
+Создать свой репозиторий и разместить там ранее собранный RPM
+
+● Теперь приступим к созданию своего репозитория. Директория для статики у Nginx по умолчанию /usr/share/nginx/html. Создадим там каталог repo:
+
+[root@MiWiFi-R4A-srv x86_64]# mkdir /usr/share/nginx/html/repo
+Копируем туда наши собранные RPM-пакеты:
+[root@MiWiFi-R4A-srv x86_64]#  cp ~/rpmbuild/RPMS/x86_64/*.rpm /usr/share/nginx/html/repo/
+Инициализируем репозиторий командой:
+[root@MiWiFi-R4A-srv x86_64]# createrepo /usr/share/nginx/html/repo/
+Directory walk started
+Directory walk done - 10 packages
+Temporary output repo path: /usr/share/nginx/html/repo/.repodata/
+Preparing sqlite DBs
+Pool started (with 5 workers)
+Pool finished
+Для прозрачности настроим в NGINX доступ к листингу каталога. В файле /etc/nginx/nginx.conf в блоке server добавим следующие директивы:
+index index.html index.htm;
+	autoindex on;
+[root@MiWiFi-R4A-srv x86_64]# nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+● Все готово для того, чтобы протестировать репозиторий.
+● Добавим его в /etc/yum.repos.d:
+[root@MiWiFi-R4A-srv x86_64]# cat >> /etc/yum.repos.d/otus.repo << EOF
+[otus]
+name=otus-linux
+baseurl=http://localhost/repo
+gpgcheck=0
+enabled=1
+EOF
+ Убедимся, что репозиторий подключился и посмотрим, что в нем есть:
+[root@MiWiFi-R4A-srv x86_64]# yum repolist enabled | grep otus
+otus                             otus-linux
+Добавим пакет в наш репозиторий:
+[root@MiWiFi-R4A-srv x86_64]# cd /usr/share/nginx/html/repo/
+[root@MiWiFi-R4A-srv repo]# wget https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+ Обновим список пакетов в репозитории:
+[root@MiWiFi-R4A-srv repo]# yum makecache
+AlmaLinux 9 - AppStream                                                                                                                                                          4.9 kB/s | 4.2 kB     00:00
+AlmaLinux 9 - BaseOS                                                                                                                                                             5.8 kB/s | 3.8 kB     00:00
+AlmaLinux 9 - Extras                                                                                                                                                             6.0 kB/s | 3.8 kB     00:00
+otus-linux                                                                                                                                                                       2.8 MB/s | 3.0 kB     00:00
+otus-linux                                                                                                                                                                       463 kB/s | 7.2 kB     00:00
+Metadata cache created.
+[root@MiWiFi-R4A-srv repo]#  yum list | grep otus
+percona-release.noarch                               1.0-31                              otus
+Так как Nginx у нас уже стоит, установим репозиторий percona-release:
+[root@MiWiFi-R4A-srv repo]#  yum install -y percona-release.noarch
