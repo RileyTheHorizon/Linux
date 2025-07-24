@@ -24,3 +24,8 @@ done
 
 root@warmachine:/home/alex# reboot    
 ![Image alt](https://github.com/RileyTheHorizon/Linux/blob/main/GRUB1.jpg)   
+
+КАРТИНКА 2
+В конце строки, начинающейся с linux, добавляем init=/bin/bash и нажимаем сtrl-x для загрузки в систему
+В целом на этом все, Вы попали в систему. Но есть один нюанс. Рутовая файловая
+система при этом монтируется в режиме Read-Only. Если вы хотите перемонтировать ее в режим Read-Write, можно воспользоваться командой:
