@@ -18,5 +18,5 @@ Systems on them will not be added to the GRUB boot configuration.
 Check GRUB_DISABLE_OS_PROBER documentation entry.
 Adding boot menu entry for UEFI Firmware Settings ...
 done
-root@warmachine:/home/alex# reboot
+root@warmachine:/home/alex# reboot   
 ![Image alt(https://github.com/RileyTheHorizon/Linux/blob/main/GRUB1.jpg)
