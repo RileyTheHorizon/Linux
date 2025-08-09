@@ -1,3 +1,4 @@
+#!/bin/bash
 #Необходимая информация в письме:
 
 #Список IP адресов (с наибольшим кол-вом запросов) с указанием кол-ва запросов c момента последнего запуска скрипта;
@@ -6,7 +7,6 @@
 #Список всех кодов HTTP ответа с указанием их кол-ва с момента последнего запуска скрипта.
 #Скрипт должен предотвращать одновременный запуск нескольких копий, до его завершения.
 
-#!/bin/bash
 # Конфигурация
 LOCKFILE="/tmp/lockfile.lock"
 LASTRUNFILE="/tmp/lastrunfile.lastrun"
@@ -23,13 +23,13 @@ cleanup() {
 # Обработка прерываний
 trap 'cleanup; exit 1' INT TERM EXIT
 
-# Проверка на блокировку и отправка отчета в случае недоступности
+# Проверка на блокировку + отправка отчета на mail в случае недоступности 
 if [ -e "$LOCKFILE" ]; then
-    echo "Script is already running. Stopping new iteration." | mailx -s "Script already running" "$EMAIL 
+    echo "Script is already running. Stopping new iteration." | mailx -s "Script already running" "$EMAIL"
     exit 1
 fi
 
-# Создание файла блокировки
+# Создание файла блокировки + отправка отчета на mail в случае недоступности 
 touch "$LOCKFILE" || {
     echo "Failed to create lock file" | mailx -s "Script failed" "$EMAIL"
     exit 1
@@ -70,16 +70,13 @@ awk -v last_run="$LASTRUN" '$4 >= "["last_run' "$LOGFILE" > "$TMPFILE"
     echo "Server/Application Errors since last run:"
     ERROR_OUTPUT=$(awk -v last_run="$LASTRUN" '
         $4 >= "["last_run && \
-        ($9 ~ /^5[0-9]{2}$/ || \
-        /\[error\]/ || \
-        ($9 == 404 && $7 !~ /(robots\.txt|favicon\.ico)$/)) {
+        ($9 ~ /^5[0-9]{2}$/ || /\[error\]/) {
             print "    "$0
         }
     ' "$LOGFILE" | tail -20)
 
     if [ -z "$ERROR_OUTPUT" ]; then
         echo "    No critical errors detected"
-        echo "    (Note: 404 errors on common files like robots.txt are excluded)"
     else
         echo "$ERROR_OUTPUT"
     fi
