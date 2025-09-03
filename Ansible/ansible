@@ -1,0 +1,185 @@
+Ansible
+● Создадим свой первый inventory файл ./staging/hosts
+Со следующим содержимым:
+[web]
+nginx ansible_host=192.168.64.2 ansible_user=vagrant ansible_private_key_file=.vagrant/machines/nginx/utm/private_key
+И наконец убедимся, что Ansible может управлять нашим хостом. Сделать это можно с помощью команды:
+rileythehorizon@MacBook-Air-Aleksandr Ansible % ansible nginx -i stagin/hosts -m ping
+nginx | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.10"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+
+Как видно, нам придется каждый раз явно указывать наш инвентори файл и вписывать в него много информации. Это можно обойти используя ansible.cfg файл - прописав конфигурацию в нем.
+● Для этого в текущем каталоге создадим файл ansible.cfg со следующим содержанием:
+
+[defaults]
+inventory = staging/hosts
+remote_user = vagrant
+host_key_checking = False
+retry_files_enabled = False
+● Теперь из инвентори можно убрать информацию о пользователе:
+
+[web]
+nginx ansible_host=192.168.64.2 ansible_private_key_file=.vagrant/machines/nginx/utm/private_key
+
+Еще раз убедимся, что управляемый хост доступе, только теперь без
+явного указаниā inventory файла:
+rileythehorizon@MacBook-Air-Aleksandr Ansible % ansible nginx -m ping
+nginx | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.10"
+    },
+    "changed": false,
+    "ping": "pong"
+● Теперь, когда мы убедились, что у нас все подготовлено - установлен
+Ansible, поднят хост для теста и Ansible имеет к нему доступ, мы можем
+конфигурировать наш хост.
+Для начала воспользуемся Ad-Hoc командами и выполним некоторые
+удаленные команды на нашем хосте.
+Посмотрим какое ядро установлено на хосте:rileythehorizon@MacBook-Air-Aleksandr Ansible % ansible nginx -m command -a "uname -r"
+nginx | CHANGED | rc=0 >>
+5.15.0-152-generic
+Проверим статус сервиса firewalld:
+rileythehorizon@MacBook-Air-Aleksandr Ansible % ansible nginx -m systemd -a name=firewalld
+nginx | SUCCESS => {
+    "changed": false,
+    "name": "firewalld",
+    "status": {
+        "ActiveEnterTimestamp": "n/a",
+        "ActiveEnterTimestampMonotonic": "0",
+        "ActiveExitTimestamp": "n/a",
+        "ActiveExitTimestampMonotonic": "0",
+        "ActiveState": "inactive",
+Playbook
+rileythehorizon@MacBook-Air-Aleksandr Ansible % cat nginx.yaml 
+---
+- name: NGINX | Install and configure NGINX
+  hosts: nginx
+  become: true
+  
+  tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+
+    - name: Install NGINX
+      apt:
+        name: nginx
+        state: latest
+
+rileythehorizon@MacBook-Air-Aleksandr Ansible % ansible-playbook nginx.yaml
+
+PLAY [NGINX | Install and configure NGINX] *************************************************************************************************************************************************************************************************
+
+TASK [Gathering Facts] *********************************************************************************************************************************************************************************************************************
+ok: [nginx]
+
+TASK [Update package cache] ****************************************************************************************************************************************************************************************************************
+ok: [nginx]
+
+TASK [Install NGINX] ***********************************************************************************************************************************************************************************************************************
+ok: [nginx]
+
+PLAY RECAP *********************************************************************************************************************************************************************************************************************************
+nginx                      : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+Финальный плейбук с шаблоном nginx в templates + handlers и notify
+
+rileythehorizon@MacBook-Air-Aleksandr Ansible % cat nginx.yaml 
+---
+- name: NGINX | Install and configure NGINX
+  hosts: nginx
+  become: true
+  vars:
+    nginx_listen_port: 8080  
+
+  tasks:
+    - name: Update package cache
+      apt: 
+        update_cache: yes
+      tags:
+        - update_apt
+
+    - name: Install NGINX
+      apt:
+        name: nginx
+        state: latest
+      notify:
+        - restart nginx
+      tags:
+        - nginx_package
+
+    - name: Create NGINX config file from template
+      template:
+        src: templates/nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+      notify:
+        - reload nginx
+      tags:
+        - nginx-configuration
+
+  handlers:
+    - name: restart nginx
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+
+    - name: reload nginx
+      systemd:
+        name: nginx
+        state: reloaded
+rileythehorizon@MacBook-Air-Aleksandr Ansible % ansible-playbook nginx.yaml    
+
+PLAY [NGINX | Install and configure NGINX] *************************************************************************************************************************************************************************************************
+
+TASK [Gathering Facts] *********************************************************************************************************************************************************************************************************************
+ok: [nginx]
+
+TASK [Update package cache] ****************************************************************************************************************************************************************************************************************
+ok: [nginx]
+
+TASK [Install NGINX] ***********************************************************************************************************************************************************************************************************************
+ok: [nginx]
+
+TASK [Create NGINX config file from template] **********************************************************************************************************************************************************************************************
+changed: [nginx]
+
+RUNNING HANDLER [reload nginx] *************************************************************************************************************************************************************************************************************
+changed: [nginx]
+
+PLAY RECAP *********************************************************************************************************************************************************************************************************************************
+nginx                      : ok=5    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+rileythehorizon@MacBook-Air-Aleksandr Ansible % curl http://192.168.64.2:8080
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+
+    
