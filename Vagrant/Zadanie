@@ -1,0 +1,61 @@
+Обновление ядра
+Подключаемся по ssh к созданной виртуальной машины. Для этого в каталоге с нашим Vagrantfile вводим команду vagrant ssh 
+Перед работами проверим текущую версию ядра:
+PS C:\Users\Riley\zadanie1997> vagrant ssh
+[vagrant@kernel-update ~]$ uname -r
+4.18.0-516.el8.x86_64
+Установим последнее ядро из репозитория elrepo-kernel:
+sudo yum --enablerepo elrepo-kernel install kernel-ml -y
+[vagrant@kernel-update ~]$ sudo yum --enablerepo elrepo-kernel install kernel-ml -y
+ELRepo.org Community Enterprise Linux Kernel Repository - el8                                                                                                                                                892 kB/s | 4.5 MB     00:05
+Dependencies resolved.
+=============================================================================================================================================================================================================================================
+ Package                                                     Architecture                                     Version                                                          Repository                                               Size
+=============================================================================================================================================================================================================================================
+Installing:
+ kernel-ml                                                   x86_64                                           6.16.5-1.el8.elrepo                                              elrepo-kernel                                           158 k
+Installing dependencies:
+ kernel-ml-core                                              x86_64                                           6.16.5-1.el8.elrepo                                              elrepo-kernel                                            67 M
+ kernel-ml-modules                                           x86_64                                           6.16.5-1.el8.elrepo                                              elrepo-kernel                                            63 M
+
+Transaction Summary
+=============================================================================================================================================================================================================================================
+Install  3 Packages
+
+Total download size: 130 M
+Installed size: 175 M
+Downloading Packages:
+(1/3): kernel-ml-6.16.5-1.el8.elrepo.x86_64.rpm                                                                                                                                                               93 kB/s | 158 kB     00:01
+(2/3): kernel-ml-core-6.16.5-1.el8.elrepo.x86_64.rpm                                                                                                                                                         819 kB/s |  67 MB     01:23
+(3/3): kernel-ml-modules-6.16.5-1.el8.elrepo.x86_64.rpm                                                                                                                                                      665 kB/s |  63 MB     01:36
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Total                                                                                                                                                                                                        1.3 MB/s | 130 MB     01:36
+ELRepo.org Community Enterprise Linux Kernel Repository - el8                                                                                                                                                242 kB/s | 1.7 kB     00:00
+Importing GPG key 0xBAADAE52:
+ Userid     : "elrepo.org (RPM Signing Key for elrepo.org) <secure@elrepo.org>"
+ Fingerprint: 96C0 104F 6315 4731 1E0B B1AE 309B C305 BAAD AE52
+ From       : /etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org
+Key imported successfully
+ELRepo.org Community Enterprise Linux Kernel Repository - el8                                                                                                                                                2.0 MB/s | 3.1 kB     00:00
+Importing GPG key 0xEAA31D4A:
+ Userid     : "elrepo.org (RPM Signing Key v2 for elrepo.org) <secure@elrepo.org>"
+ Fingerprint: B8A7 5587 4DA2 40C9 DAC4 E715 5160 0989 EAA3 1D4A
+ From       : /etc/pki/rpm-gpg/RPM-GPG-KEY-v2-elrepo.org
+Key imported successfully
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Preparing        :                                                                                                                                                                                                                     1/1
+  Installing       : kernel-ml-core-6.16.5-1.el8.elrepo.x86_64                                                                                                                                                                           1/3
+  Running scriptlet: kernel-ml-core-6.16.5-1.el8.elrepo.x86_64                                                                                                                                                                           1/3
+  Installing       : kernel-ml-modules-6.16.5-1.el8.elrepo.x86_64                                                                                                                                                                        2/3
+  Running scriptlet: kernel-ml-modules-6.16.5-1.el8.elrepo.x86_64                                                                                                                                                                        2/3
+  Installing       : kernel-ml-6.16.5-1.el8.elrepo.x86_64                                                                                                                                                                                3/3
+  Running scriptlet: kernel-ml-core-6.16.5-1.el8.elrepo.x86_64                                                                                                                                                                           3/3
+[vagrant@kernel-update ~]$ sudo reboot
+PS C:\Users\Riley\zadanie1997> vagrant ssh
+Last login: Sun Sep  7 13:51:34 2025
+[vagrant@kernel-update ~]$ uname -r
+6.16.5-1.el8.elrepo.x86_64
