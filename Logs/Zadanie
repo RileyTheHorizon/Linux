@@ -59,4 +59,16 @@ Oct  5 18:06:37 web nginx_access: 192.168.56.1 - - [05/Oct/2025:18:06:37 +0000] 
 root@log:/var/log/remote/web# cat nginx_error.log
 Oct  5 18:08:13 web nginx_error: 2025/10/05 18:08:13 [error] 3049#3049: *6 directory index of "/var/www/html/" is forbidden, client: 192.168.56.1, server: _, request: "GET / HTTP/1.1", host: "192.168.56.10"
 Oct  5 18:08:14 web nginx_error: 2025/10/05 18:08:14 [error] 3049#3049: *6 directory index of "/var/www/html/" is forbidden, client: 192.168.56.1, server: _, request: "GET / HTTP/1.1", host: "192.168.56.10"
+Разварачиваем 3у машину
+vagrant@log2:~$ sudo nano /etc/rsyslog.conf
+# Send all logs to central server via UDP
+*.* @192.168.56.15:514
+# Send all logs to central server via TCP
+*.* @@192.168.56.15:514
+Проверяем 
+logger "Test message to central log server"
+
+root@log:~# cat /var/log/remote/log2/vagrant.log
+Oct  5 18:18:16 log2 vagrant: Test message to central log server
+Oct  5 18:18:16 log2 vagrant: Test message to central log server
 
