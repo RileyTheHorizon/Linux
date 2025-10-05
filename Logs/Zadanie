@@ -1,0 +1,62 @@
+Заходим на web-сервер: 
+PS C:\Users\Riley\logs> vagrant ssh server
+vagrant@web:~$ sudo -i
+Установим nginx на ВМ web
+root@web:~# apt update && apt install -y nginx
+root@web:~# ss -nltp | grep 80
+LISTEN 0      511          0.0.0.0:80        0.0.0.0:*    users:(("nginx",pid=2953,fd=6),("nginx",pid=2952,fd=6),("nginx",pid=2949,fd=6))
+LISTEN 0      511             [::]:80           [::]:*    users:(("nginx",pid=2953,fd=7),("nginx",pid=2952,fd=7),("nginx",pid=2949,fd=7))
+Настройка центрального сервера сбора логов
+
+Откроем еще одно окно терминала и подключаемся по ssh к ВМ log: vagrant ssh log
+Перейдем в пользователя root: sudo -i
+rsyslog должен быть установлен по умолчанию в нашей ОС, проверим это:
+root@log:/home/vagrant# apt list rsyslog
+Listing... Done
+rsyslog/jammy-updates,jammy-security,now 8.2112.0-2ubuntu2.2 amd64 [installed,automatic]
+root@log:/home/vagrant# nano /etc/rsyslog.conf
+
+# provides UDP syslog reception
+#module(load="imudp")
+input(type="imudp" port="514")
+
+# provides TCP syslog reception
+#module(load="imtcp")
+input(type="imtcp" port="514")
+#Add remote logs
+$template RemoteLogs,"/var/log/remote/%HOSTNAME%/%PROGRAMNAME%.log"
+*.* ?Remotelogs
+& ~
+
+root@log:/home/vagrant# ss -nltpu
+Netid            State             Recv-Q            Send-Q                        Local Address:Port                         Peer Address:Port            Process
+udp              UNCONN            0                 0                                   0.0.0.0:514                               0.0.0.0:*                users:(("rsyslogd",pid=2141,fd=5))
+udp              UNCONN            0                 0                             127.0.0.53%lo:53                                0.0.0.0:*                users:(("systemd-resolve",pid=647,fd=13))
+udp              UNCONN            0                 0                            10.0.2.15%eth0:68                                0.0.0.0:*                users:(("systemd-network",pid=645,fd=19))
+udp              UNCONN            0                 0                                      [::]:514                                  [::]:*                users:(("rsyslogd",pid=2141,fd=6))
+tcp              LISTEN            0                 25                                  0.0.0.0:514                               0.0.0.0:*                users:(("rsyslogd",pid=2141,fd=7))
+tcp              LISTEN            0                 128                                 0.0.0.0:22                                0.0.0.0:*                users:(("sshd",pid=722,fd=3))
+tcp              LISTEN            0                 4096                          127.0.0.53%lo:53                                0.0.0.0:*                users:(("systemd-resolve",pid=647,fd=14))
+tcp              LISTEN            0                 25                                     [::]:514                                  [::]:*                users:(("rsyslogd",pid=2141,fd=8))
+tcp              LISTEN            0                 128                                    [::]:22                                   [::]:*                users:(("sshd",pid=722,fd=4))
+
+Переходим на web
+Находим в файле /etc/nginx/nginx.conf раздел с логами и приводим их к следующему виду:
+        # Logging Settings
+        ##
+
+        access_log /var/log/nginx/access.log;
+        access_log syslog:server=192.168.56.15:514,tag=nginx_access,severity=info combined;
+        error_log /var/log/nginx/error.log;
+        error_log syslog:server=192.168.56.15:514,tag=nginx_error;
+root@web:~# nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+root@web:~# systemctl restart nginx
+root@log:/var/log/remote/web# cat /var/log/remote/web/nginx_access.log
+Oct  5 18:03:05 web nginx_access: 192.168.56.1 - - [05/Oct/2025:18:03:05 +0000] "GET / HTTP/1.1" 304 0 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0"
+Oct  5 18:06:37 web nginx_access: 192.168.56.1 - - [05/Oct/2025:18:06:37 +0000] "GET / HTTP/1.1" 304 0 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0"
+root@log:/var/log/remote/web# cat nginx_error.log
+Oct  5 18:08:13 web nginx_error: 2025/10/05 18:08:13 [error] 3049#3049: *6 directory index of "/var/www/html/" is forbidden, client: 192.168.56.1, server: _, request: "GET / HTTP/1.1", host: "192.168.56.10"
+Oct  5 18:08:14 web nginx_error: 2025/10/05 18:08:14 [error] 3049#3049: *6 directory index of "/var/www/html/" is forbidden, client: 192.168.56.1, server: _, request: "GET / HTTP/1.1", host: "192.168.56.10"
+
