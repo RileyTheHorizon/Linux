@@ -1,0 +1,20 @@
+Oct 11 18:38:24 client systemd[1]: Starting Borg Backup...
+Oct 11 18:38:25 client borg[2800]: ------------------------------------------------------------------------------
+Oct 11 18:38:25 client borg[2800]: Repository: ssh://borg@192.168.11.160/var/backup
+Oct 11 18:38:25 client borg[2800]: Archive name: etc-2025-10-11_18:38:25
+Oct 11 18:38:25 client borg[2800]: Archive fingerprint: 9c8a8dd892fa62be4d1237a5b0e7915b9632b2f4f6bd9c1a3aa674f187a02d68
+Oct 11 18:38:25 client borg[2800]: Time (start): Sat, 2025-10-11 18:38:25
+Oct 11 18:38:25 client borg[2800]: Time (end):   Sat, 2025-10-11 18:38:25
+Oct 11 18:38:25 client borg[2800]: Duration: 0.51 seconds
+Oct 11 18:38:25 client borg[2800]: Number of files: 793
+Oct 11 18:38:25 client borg[2800]: Utilization of max. archive size: 0%
+Oct 11 18:38:25 client borg[2800]: ------------------------------------------------------------------------------
+Oct 11 18:38:25 client borg[2800]:                        Original size      Compressed size    Deduplicated size
+Oct 11 18:38:25 client borg[2800]: This archive:                2.28 MB              1.02 MB            988.92 kB
+Oct 11 18:38:25 client borg[2800]: All archives:                2.28 MB              1.02 MB              1.06 MB
+Oct 11 18:38:25 client borg[2800]:                        Unique chunks         Total chunks
+Oct 11 18:38:25 client borg[2800]: Chunk index:                     745                  782
+Oct 11 18:38:25 client borg[2800]: ------------------------------------------------------------------------------
+Oct 11 18:38:27 client systemd[1]: borg-backup.service: Deactivated successfully.
+Oct 11 18:38:27 client systemd[1]: Finished Borg Backup.
+
