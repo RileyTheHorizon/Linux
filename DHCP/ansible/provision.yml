@@ -1,0 +1,142 @@
+---
+- name: Set up PXE server
+  hosts: pxeserver
+  become: true
+  tasks:
+    - name: Stopping firewall
+      ansible.builtin.service:
+        name: ufw
+        state: stopped 
+        enabled: false
+    
+    - name: Install soft
+      ansible.builtin.apt:
+        name:
+          - dnsmasq
+          - apache2
+        state: present   
+        update_cache: yes
+    
+    - name: Create pxeconf
+      ansible.builtin.template:
+        src: pxe.conf.j2
+        dest: /etc/dnsmasq.d/pxe.conf
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Create TFTP directory
+      ansible.builtin.file:
+        path: /srv/tftp
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Download Ubuntu image
+      ansible.builtin.get_url:
+        url: https://cdimage.ubuntu.com/ubuntu-server/daily-live/current/questing-netboot-amd64.tar.gz
+        dest: /tmp/questing-netboot-amd64.tar.gz
+        mode: "0644"
+
+    - name: Extract image to TFTP directory
+      ansible.builtin.unarchive:
+        src: /tmp/questing-netboot-amd64.tar.gz
+        dest: /srv/tftp/
+        remote_src: yes
+        owner: root
+        group: root
+
+    - name: Restart dnsmasq service
+      ansible.builtin.service:
+        name: dnsmasq
+        state: restarted
+        enabled: true 
+   
+    - name: Create apache image directory
+      ansible.builtin.file:
+        path: /srv/images
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Download Ubuntu iso image
+      ansible.builtin.get_url:
+        url: http://cdimage.ubuntu.com/ubuntu-server/daily-live/current/questing-live-server-amd64.iso
+        dest: /srv/images/questing-live-server-amd64.iso
+        mode: "0755"
+
+    - name: Create ksserver conf
+      ansible.builtin.template:
+        src: ks-server.conf.j2
+        dest: /etc/apache2/sites-available/ks-server.conf
+        owner: root
+        group: root
+        mode: "0644" 
+     
+    - name: Enable ks-server site in Apache
+      ansible.builtin.shell:
+        cmd: a2ensite ks-server.conf
+   
+    - name: Configure pxelinux default file
+      ansible.builtin.template:
+        src: default.j2
+        dest: /srv/tftp/amd64/pxelinux.cfg/default
+        owner: root
+        group: root
+        mode: "0644"
+      
+    - name: Restart Apache
+      ansible.builtin.service:
+        name: apache2
+        state: restarted
+        enabled: true
+   
+    - name: Create autoinstall directory
+      ansible.builtin.file:
+        path: /srv/ks
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create user-data file for autoinstall
+      ansible.builtin.template:
+        src: user-data.j2
+        dest: /srv/ks/user-data
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Create meta-data file
+      ansible.builtin.file:
+        path: /srv/ks/meta-data
+        state: touch
+        owner: root
+        group: root
+        mode: "0644" 
+
+    - name: Update Apache config to include KS directory
+      ansible.builtin.template:
+        src: ks-server.conf.j2
+        dest: /etc/apache2/sites-available/ks-server.conf
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Update pxelinux config for autoinstall
+      ansible.builtin.template:
+        src: default.j2
+        dest: /srv/tftp/amd64/pxelinux.cfg/default
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Restart services
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - dnsmasq
+        - apache2
