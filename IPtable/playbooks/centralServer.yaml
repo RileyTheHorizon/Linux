@@ -1,0 +1,35 @@
+---
+- name: Config centralServer
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Install packages
+      ansible.builtin.apt:
+        name:
+          - vim
+          - traceroute
+          - net-tools
+        state: present
+        update_cache: true
+
+    - name: Make routes persistent
+      ansible.builtin.copy:
+        content: |
+          post-up ip route del default via 10.0.2.2 dev eth0 2>/dev/null || true
+          post-up ip route replace default via 192.168.0.1 dev eth1
+        dest: /etc/network/interfaces.d/60-static-routes
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Install nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+
+    - name: Start and enable nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: started
+        enabled: true
