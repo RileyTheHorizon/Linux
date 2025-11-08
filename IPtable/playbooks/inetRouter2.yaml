@@ -1,0 +1,48 @@
+---
+- name: Config inetRouter2
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Install packages
+      ansible.builtin.apt:
+        name:
+          - vim
+          - traceroute
+          - iptables-persistent
+          - netfilter-persistent
+          - net-tools
+        state: present
+        update_cache: true
+
+    - name: Copy iptables config
+      ansible.builtin.copy:
+        src: files/iptables-inetRouter2.rules
+        dest: /etc/iptables/rules.v4
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Apply iptables rules
+      ansible.builtin.shell:
+        cmd: iptables-restore < /etc/iptables/rules.v4
+
+    - name: Enable iptables persistence
+      ansible.builtin.systemd:
+        name: netfilter-persistent
+        state: started
+        enabled: true
+
+    - name: Set up forward packages across routers
+      ansible.builtin.sysctl:
+        name: net.ipv4.ip_forward
+        value: '1'
+        state: present
+        reload: yes
+
+    - name: Set up localnet routing
+      ansible.builtin.sysctl:
+        name: net.ipv4.conf.all.route_localnet
+        value: '1'
+        state: present
+        reload: yes
