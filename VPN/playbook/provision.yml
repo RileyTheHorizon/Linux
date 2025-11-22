@@ -1,0 +1,48 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+
+    - name: Install packages
+      apt:
+        name:
+          - openvpn
+          - iperf3
+        state: present
+
+
+    - name: Copy key file
+      copy:
+        src: files/static.key
+        dest: /etc/openvpn/static.key
+        owner: root
+        group: root
+        mode: "0640"
+
+    - name: Copy conf file
+      copy:
+        src: "files/server.conf-{{ ansible_hostname }}"
+        dest: /etc/openvpn/server.conf
+        owner: root
+        group: root
+        mode: "0640"
+    
+    - name: Copy unit file
+      copy:
+        src: files/openvpn.service
+        dest: /etc/systemd/system/openvpn@.service
+        owner: root
+        group: root
+        mode: "0640"
+    
+    - name: Start openvpn
+      service:
+        name: openvpn@server
+        state: started
+        enabled: true
+
+
+
