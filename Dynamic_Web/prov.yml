@@ -1,92 +1,93 @@
 ---
-- hosts: DynamicWeb
+- hosts: all
   become: yes
   gather_facts: false
+
   tasks:
-  - name: Update apt packages cache
-    become: yes    
-    apt:
-      update_cache: yes
-    tags:
-      - docker
+    - name: Update apt
+      apt:
+        update_cache: yes
 
-  - name: Install docker packages
-    become: yes
-    apt:
-      name: "{{ item }}"
-      state: present
-    with_items:
-      - apt-transport-https
-      - ca-certificates
-      - curl
-      - software-properties-common
-    tags:
-      - docker
+    - name: Install packages
+      apt:
+        name:
+          - nginx
+          - python3
+          - python3-pip
+          - python3-venv
+          - gunicorn
+          - nodejs
+          - npm
+          - php-fpm
+          - php-cli
+        state: present
 
-  - name: Add Docker s official GPG key
-    become: yes
-    apt_key:
-      url: https://download.docker.com/linux/ubuntu/gpg
-      state: present
-    tags:
-      - docker
+    - name: Copy project
+      copy:
+        src: project/
+        dest: /opt/webapps/
 
-  - name: Verify that we have the key with the fingerprint
-    become: yes    
-    apt_key:
-      id: 0EBFCD88
-      state: present
-    tags:
-      - docker
+    - name: Setup Django
+      shell: |
+        cd /opt/webapps/python
+        python3 -m venv venv
+        . venv/bin/activate
+        pip install django gunicorn
+        nohup gunicorn --bind 127.0.0.1:8001 mysite.wsgi:application > /var/log/django.log 2>&1 &
+      args:
+        creates: /opt/webapps/python/venv/
 
-  - name: Set up the stable repository
-    become: yes    
-    apt_repository:
-      repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable
-      state: present
-    tags:
-      - docker
-  
-  - name: Update apt packages after adding Docker repo
-    become: yes    
-    apt:
-      update_cache: yes
-    tags:
-      - docker
+    - name: Setup Node.js
+      shell: |
+        cd /opt/webapps/node
+        npm init -y
+        nohup node test.js > /var/log/nodejs.log 2>&1 &
+      args:
+        creates: /opt/webapps/node/package.json
 
-  - name: Install docker
-    become: yes    
-    apt:
-      name: docker-ce
-      state: present
-    tags:
-      - docker
+    - name: Create PHP app
+      copy:
+        dest: /opt/webapps/php/index.php
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <body>
+              <h1>PHP App</h1>
+              <p>Port: 8083</p>
+          </body>
+          </html>
 
-  - name: Add remote "vagrant" user to "docker" group
-    become: yes
-    user:
-      name: vagrant
-      group: "docker"
-      append: yes
-    tags:
-      - docker
+    - name: Configure Nginx
+      copy:
+        src: project/nginx-conf/nginx.conf
+        dest: /etc/nginx/sites-available/webapps
 
-  - name: Install docker-compose 
-    become: yes
-    get_url:
-      url: https://github.com/docker/compose/releases/download/1.25.1-rc1/docker-compose-Linux-x86_64
-      dest: /usr/local/bin/docker-compose
-      mode: 0777
+    - name: Enable Nginx site
+      file:
+        src: /etc/nginx/sites-available/webapps
+        dest: /etc/nginx/sites-enabled/webapps
+        state: link
 
-  - name: Copy project
-    copy:
-      src: project
-      dest: /home/vagrant
+    - name: Remove default site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
 
-  - name: reset ssh connection
-    meta: reset_connection
+    - name: Start PHP-FPM
+      systemd:
+        name: php8.1-fpm
+        state: started
+        enabled: yes
 
-  - name: Run container
-    shell:
-      cmd: "docker-compose -f docker-compose.yml up -d"
-      chdir: /home/vagrant/project
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes
+
+    - name: Final check
+      shell: sleep 2 && curl -s http://127.0.0.1:8081/ | head -2
+      register: check
+
+    - debug:
+        msg: "Apps running. Check localhost:8081, :8082, :8083"
